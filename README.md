@@ -10,7 +10,7 @@
 
 ## ACCESSO ALLA PIATTAFORMA
 
-[**APRI PORTALE ELETTORALE TV →**](https://chatgpt.com/c/portale_elletroale_tv.html)
+[**APRI PORTALE ELETTORALE TV →**](ELECTION%20MAP/portale_elletroale_tv.html)
 
 ---
 
@@ -164,7 +164,7 @@ INFORMAZIONE · TECNOLOGIA · PRESENTAZIONE
 
 ## ACCEDI ALLA PIATTAFORMA
 
-[**APRI PORTALE ELETTORALE TV →**](https://chatgpt.com/c/portale_elletroale_tv.html)
+[**APRI PORTALE ELETTORALE TV →**](ELECTION%20MAP/portale_elletroale_tv.html)
 
 **TM COMPANY – THEJAN THAMMAHETTI**
 
