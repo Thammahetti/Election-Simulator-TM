@@ -22,7 +22,7 @@ Questa è la **versione Beta 1.0**, una prima versione del progetto, pubblicata 
 
 ## Stato del progetto
 
-**Beta 1.0** – Prima versione pubblica del simulatore.
+**OFFICAL RELEASE 1.0
 
 Feedback e suggerimenti sono benvenuti per contribuire ai futuri aggiornamenti.
 
