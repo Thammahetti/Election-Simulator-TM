@@ -102,17 +102,6 @@ L'obiettivo è offrire un'esperienza completa, intuitiva e scenografica, trasfor
 
 ---
 
-## AVVIO DELLA PIATTAFORMA
-
-1. Scaricare o clonare il progetto.
-2. Mantenere la struttura delle cartelle e le risorse necessarie.
-3. Verificare la presenza della cartella `Data` e dei relativi file.
-4. Aprire `portale_elletroale_tv.html` con un browser moderno.
-5. Configurare candidati, elezioni e distretti per iniziare.
-
-È necessaria una connessione Internet per caricare le librerie e le risorse esterne incluse tramite CDN.
-
----
 
 ## ARCHITETTURA E GESTIONE DEI DATI
 
