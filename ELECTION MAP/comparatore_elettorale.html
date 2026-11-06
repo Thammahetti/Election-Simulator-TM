@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparatore Elettorale TV | Analisi Grafica Avanzata</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        /* Glassmorphism TV Broadcast Panels */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 0.95) 100%);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Interactive Map Region Styling */
+        .map-region {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+        .map-region:hover {
+            filter: brightness(1.3) drop-shadow(0 0 16px rgba(255, 255, 255, 0.6));
+            stroke: #ffffff;
+            stroke-width: 3.5px;
+        }
+
+        /* Radar Scanner Effect */
+        .radar-scanner {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 250%; height: 250%;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(245, 158, 11, 0.12) 95%, rgba(245, 158, 11, 0.4) 100%);
+            border-radius: 50%;
+            transform-origin: center;
+            animation: radarSpin 5s linear infinite;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+        @keyframes radarSpin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Pulsing Glow Animations */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+            100% { box-shadow: 0 0 30px rgba(245, 158, 11, 0.9); }
+        }
+        .swing-glow {
+            animation: pulseGlow 1.8s ease-in-out infinite alternate;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Metallic Text Gradients */
+        .text-gradient-gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .text-gradient-cyan {
+            background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Smooth Progress Bar Transitions */
+        .progress-bar-fill {
+            transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+    </style>
+</head>
+<body class="p-3 md:p-6">
+    <div id="app" class="max-w-[1920px] mx-auto space-y-6">
+
+        <!-- HOVER TOOLTIP ON MAP -->
+        <div v-if="hoveredDistrict" class="fixed z-50 bg-slate-900/95 border border-slate-600 rounded-2xl p-4 shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-[120%] backdrop-blur-xl transition-all duration-150 min-w-[220px]" :style="{ left: tooltipPos.x + 'px', top: tooltipPos.y + 'px' }">
+            <div class="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2">
+                <span class="font-black text-white text-sm uppercase tracking-wide">{{ hoveredDistrict.name }}</span>
+                <span v-if="isSwingDistrict(hoveredDistrict)" class="text-[9px] font-black uppercase bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full shadow">
+                    Ribaltone
+                </span>
+            </div>
+            
+            <div class="space-y-2">
+                <div class="flex items-center gap-3">
+                    <img :src="getDistrictWinner(hoveredDistrict, elB)?.photo || 'https://placehold.co/100x100/1e293b/white?text=Winner'" class="w-10 h-10 rounded-xl object-cover border-2 shadow-md bg-slate-950" :style="{ borderColor: getDistrictWinnerColor(hoveredDistrict) }">
+                    <div>
+                        <div class="text-[10px] uppercase text-gray-400 font-bold">Vincitore Attuale</div>
+                        <div class="font-black text-sm text-white leading-tight">{{ getDistrictWinner(hoveredDistrict, elB)?.name || 'N/D' }}</div>
+                        <div class="text-xs font-mono font-bold" :style="{ color: getDistrictWinnerColor(hoveredDistrict) }">
+                            {{ getDistrictWinnerPerc(hoveredDistrict, elB) }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HEADER TV BROADCAST -->
+        <header class="glass-panel p-5 md:p-6 rounded-3xl flex flex-wrap justify-between items-center gap-4 relative overflow-hidden border border-slate-700/60 shadow-2xl">
+            <div class="absolute -right-12 -top-12 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -left-12 -bottom-12 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="flex items-center gap-4 relative z-10">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 text-2xl font-black shadow-[0_0_30px_rgba(245,158,11,0.5)] border border-yellow-200">
+                    <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded tracking-widest animate-pulse">Analisi TV Studio</span>
+                        <span class="text-xs font-mono text-gray-400 uppercase tracking-widest">Election Data Engine v3.0</span>
+                    </div>
+                    <h1 class="text-2xl md:text-3xl font-black uppercase tracking-tight text-white mt-0.5">
+                        Comparatore Elettorale <span class="text-gradient-gold">Dinamico</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- ACTION BUTTONS -->
+            <div class="flex items-center gap-3 relative z-10">
+                <a href="portale_elettorale_tv.html" class="bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white px-4 py-3 rounded-2xl text-xs font-bold border border-slate-700 transition flex items-center gap-2 shadow-lg cursor-pointer">
+                    <i class="fa-solid fa-desktop text-cyan-400"></i> Portale TV Diretta
+                </a>
+                <button @click="showUploadModal = true" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-5 py-3 rounded-2xl text-xs uppercase tracking-wider transition shadow-[0_0_20px_rgba(245,158,11,0.4)] flex items-center gap-2 cursor-pointer transform hover:scale-105">
+                    <i class="fa-solid fa-right-left"></i> Cambia Elezioni
+                </button>
+            </div>
+        </header>
+
+        <!-- NO DATA PLACEHOLDER -->
+        <div v-if="!elA || !elB" class="glass-panel p-12 md:p-20 rounded-3xl text-center space-y-6 relative overflow-hidden">
+            <div class="w-24 h-24 bg-amber-500/10 border-2 border-amber-500/30 text-amber-400 rounded-3xl flex items-center justify-center text-5xl mx-auto shadow-[0_0_40px_rgba(245,158,11,0.2)]">
+                <i class="fa-solid fa-code-compare animate-pulse"></i>
+            </div>
+            <div class="max-w-xl mx-auto">
+                <h2 class="text-3xl font-black text-white uppercase tracking-tight">Nessuna Elezione Selezionata</h2>
+                <p class="text-gray-400 text-sm mt-3 leading-relaxed">
+                    Seleziona due consultazioni elettorali dall'archivio o carica file JSON esterni per sbloccare il confronto disaggregato distretto per distretto.
+                </p>
+            </div>
+            
+            <div class="flex justify-center gap-4 pt-4">
+                <button @click="showUploadModal = true" class="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black px-8 py-4 rounded-2xl shadow-[0_0_30px_rgba(245,158,11,0.4)] hover:scale-105 transition cursor-pointer uppercase text-xs tracking-wider flex items-center gap-3">
+                    <i class="fa-solid fa-folder-open text-base"></i> Apri Selettore Elezioni
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN COMPARISON DASHBOARD -->
+        <div v-else class="space-y-6">
+
+            <!-- COMPARISON HEADERS CARD -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- ELECTION A CARD -->
+                <div class="glass-panel p-6 rounded-3xl border-l-8 border-cyan-500 relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-cyan-400 tracking-widest bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full">
+                                <i class="fa-solid fa-clock-rotate-left mr-1"></i> Elezione A (Precedente)
+                            </span>
+                            <h2 class="text-2xl font-black text-white uppercase tracking-tight mt-2">{{ elA.electionName }}</h2>
+                            <div class="text-xs text-gray-400 font-medium">{{ elA.country }} • {{ elA.date }}</div>
+                        </div>
+                        <div class="text-right bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-800">
+                            <div class="text-[10px] uppercase font-bold text-gray-400">Voti Validi Totali</div>
+                            <div class="text-lg font-mono font-black text-cyan-400">{{ getValide(elA).toLocaleString() }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-crown text-yellow-400 text-xl"></i>
+                            <div>
+                                <div class="text-[10px] uppercase font-bold text-gray-400">Vincitore Nazionale</div>
+                                <div class="font-bold text-sm text-white">{{ elA.winnerName }}</div>
+                            </div>
+                        </div>
+                        <div class="text-right font-mono font-black text-cyan-400 text-xl">{{ elA.winnerPerc }}%</div>
+                    </div>
+                </div>
+
+                <!-- ELECTION B CARD -->
+                <div class="glass-panel p-6 rounded-3xl border-l-8 border-amber-500 relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <span class="text-[10px] font-black uppercase text-amber-400 tracking-widest bg-amber-500/10 border border-amber-500/30 px-3 py-1 rounded-full">
+                                <i class="fa-solid fa-bolt mr-1"></i> Elezione B (Recente)
+                            </span>
+                            <h2 class="text-2xl font-black text-white uppercase tracking-tight mt-2">{{ elB.electionName }}</h2>
+                            <div class="text-xs text-gray-400 font-medium">{{ elB.country }} • {{ elB.date }}</div>
+                        </div>
+                        <div class="text-right bg-slate-900/80 px-4 py-2 rounded-2xl border border-slate-800">
+                            <div class="text-[10px] uppercase font-bold text-gray-400">Voti Validi Totali</div>
+                            <div class="text-lg font-mono font-black text-amber-400">{{ getValide(elB).toLocaleString() }}</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-crown text-yellow-400 text-xl"></i>
+                            <div>
+                                <div class="text-[10px] uppercase font-bold text-gray-400">Vincitore Nazionale</div>
+                                <div class="font-bold text-sm text-white">{{ elB.winnerName }}</div>
+                            </div>
+                        </div>
+                        <div class="text-right font-mono font-black text-amber-400 text-xl">{{ elB.winnerPerc }}%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NATIONAL CANDIDATES FLOW TABLE & GRAPH -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- CANDIDATES SUMMARY TABLE WITH IMAGES -->
+                <div class="lg:col-span-7 glass-panel p-6 rounded-3xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                        <h3 class="text-base font-black uppercase text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users text-amber-400"></i> Confronto Candidati Nazionali
+                        </h3>
+                        <span class="text-xs text-gray-400 font-mono font-bold bg-slate-900 px-3 py-1 rounded-full border border-slate-800">{{ mergedCandidates.length }} Candidati Registrati</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-950 text-gray-400 font-mono uppercase text-[10px] border-b border-slate-800">
+                                <tr>
+                                    <th class="p-3">Candidato / Partito</th>
+                                    <th class="p-3 text-right">Elezione A</th>
+                                    <th class="p-3 text-right">Elezione B</th>
+                                    <th class="p-3 text-right">Variazione Netta</th>
+                                    <th class="p-3 text-center">Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800/80 font-mono">
+                                <tr v-for="cand in mergedCandidates" :key="cand.name" class="hover:bg-slate-800/40 transition group">
+                                    <td class="p-3 font-sans font-bold text-white flex items-center gap-3">
+                                        <img :src="cand.photo" @error="cand.photo='https://placehold.co/100x100/1e293b/white?text=Cand'" class="w-9 h-9 rounded-xl object-cover border-2 bg-slate-950 shadow flex-shrink-0" :style="{ borderColor: cand.color }">
+                                        <div class="truncate">
+                                            <div class="text-sm font-black truncate group-hover:text-amber-400 transition">{{ cand.name }}</div>
+                                            <div class="text-[10px] text-gray-400 font-normal truncate">{{ cand.party }}</div>
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="p-3 text-right">
+                                        <span v-if="cand.inA" class="font-bold text-gray-200">{{ cand.percA }}% <span class="text-[10px] text-gray-400 font-normal">({{ cand.votesA.toLocaleString() }})</span></span>
+                                        <span v-else class="text-gray-600 italic font-sans">N/D</span>
+                                    </td>
+
+                                    <td class="p-3 text-right">
+                                        <span v-if="cand.inB" class="font-bold text-white">{{ cand.percB }}% <span class="text-[10px] text-gray-400 font-normal">({{ cand.votesB.toLocaleString() }})</span></span>
+                                        <span v-else class="text-red-400 font-sans italic font-bold">Ritirato</span>
+                                    </td>
+
+                                    <td class="p-3 text-right font-bold" :class="cand.diffVotes > 0 ? 'text-emerald-400' : (cand.diffVotes < 0 ? 'text-red-400' : 'text-gray-400')">
+                                        <span v-if="cand.inA && cand.inB">
+                                            {{ cand.diffVotes > 0 ? '+' : '' }}{{ cand.diffVotes.toLocaleString() }}
+                                            <span class="text-[10px] ml-1 font-sans">({{ cand.diffPerc > 0 ? '+' : '' }}{{ cand.diffPerc }}%)</span>
+                                        </span>
+                                        <span v-else-if="cand.inB" class="text-emerald-400">+{{ cand.votesB.toLocaleString() }}</span>
+                                        <span v-else class="text-red-400">-{{ cand.votesA.toLocaleString() }}</span>
+                                    </td>
+
+                                    <td class="p-3 text-center font-sans">
+                                        <span v-if="!cand.inA" class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                            <i class="fa-solid fa-sparkles mr-1"></i> Nuovo
+                                        </span>
+                                        <span v-else-if="!cand.inB" class="bg-red-500/20 text-red-300 border border-red-500/40 px-2.5 py-0.5 rounded-full text-[10px] font-bold">
+                                            <i class="fa-solid fa-user-slash mr-1"></i> Ritirato
+                                        </span>
+                                        <span v-else class="px-2.5 py-0.5 rounded-full text-[10px] font-bold border" :class="cand.diffVotes >= 0 ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'">
+                                            {{ cand.diffVotes >= 0 ? '▲ +'+cand.diffPerc+'%' : '▼ '+cand.diffPerc+'%' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CHART VISUALIZATION CARD -->
+                <div class="lg:col-span-5 glass-panel p-6 rounded-3xl flex flex-col justify-between space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-700/80 pb-3">
+                        <h3 class="text-base font-black uppercase text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-column text-cyan-400"></i> Grafico Variazione Percentuale
+                        </h3>
+                        <span class="text-xs text-gray-400 font-mono">Chart.js Live Engine</span>
+                    </div>
+
+                    <div class="relative flex-1 min-h-[320px] w-full flex items-center justify-center">
+                        <canvas id="candidatesComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DISTRICTS COMPARISON ENGINE (ADA DERANA MODEL) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- MAP & DISTRICT SELECTOR -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="glass-panel p-6 rounded-3xl space-y-4 relative overflow-hidden">
+                        <div class="radar-scanner"></div>
+
+                        <div class="flex justify-between items-center border-b border-slate-700/80 pb-3 relative z-10">
+                            <h3 class="text-base font-black uppercase text-white flex items-center gap-2">
+                                <i class="fa-solid fa-map-location-dot text-amber-400"></i> Mappa Distretti Interattiva
+                            </h3>
+                            <div class="text-xs text-gray-400 font-mono font-bold flex items-center gap-3">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-square text-amber-400"></i> Swing District</span>
+                            </div>
+                        </div>
+
+                        <!-- SVG MAP WITH HOVER EFFECTS -->
+                        <div class="w-full flex justify-center bg-slate-950 p-4 rounded-2xl border border-slate-800 shadow-inner relative z-10">
+                            <svg viewBox="0 0 500 500" class="w-full h-auto max-h-[360px]">
+                                <g>
+                                    <path v-for="reg in matchedRegions" :key="'m-'+reg.id"
+                                          :d="reg.path"
+                                          :fill="selectedDistrict?.id === reg.id ? '#f59e0b' : getDistrictWinnerColor(reg)"
+                                          stroke="#0f172a" stroke-width="2.5"
+                                          class="map-region"
+                                          :class="{ 'swing-glow': isSwingDistrict(reg) }"
+                                          @mousemove="(e) => onDistrictHover(e, reg)"
+                                          @mouseleave="onDistrictLeave"
+                                          @click="selectedDistrict = reg" />
+                                </g>
+                                <g class="pointer-events-none select-none">
+                                    <text v-for="reg in matchedRegions" :key="'lbl-'+reg.id"
+                                          :x="reg.centerX" :y="reg.centerY"
+                                          fill="#ffffff" font-size="10" font-weight="800" text-anchor="middle"
+                                          class="uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                                        {{ reg.name }}
+                                    </text>
+                                </g>
+                            </svg>
+                        </div>
+
+                        <!-- DISTRICT LIST SELECTOR -->
+                        <div class="space-y-2 max-h-[320px] overflow-y-auto pr-1 relative z-10">
+                            <button v-for="reg in matchedRegions" :key="'btn-'+reg.id"
+                                    @click="selectedDistrict = reg"
+                                    class="w-full p-3.5 rounded-2xl border text-left flex justify-between items-center transition cursor-pointer"
+                                    :class="selectedDistrict?.id === reg.id ? 'bg-amber-500/20 border-amber-400 text-white shadow-lg' : 'bg-slate-900/80 border-slate-800 text-gray-300 hover:bg-slate-800'">
+                                <div>
+                                    <div class="font-bold text-xs flex items-center gap-2">
+                                        {{ reg.name }}
+                                        <span v-if="isSwingDistrict(reg)" class="swing-glow bg-amber-500 text-slate-950 font-black text-[9px] px-2 py-0.5 rounded-full uppercase">
+                                            Ribaltone
+                                        </span>
+                                    </div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5">{{ reg.zoneName }}</div>
+                                </div>
+                                <div class="text-right flex items-center gap-2">
+                                    <span class="text-xs font-mono font-bold" :style="{ color: getDistrictWinnerColor(reg) }">
+                                        {{ getDistrictWinnerPerc(reg, elB) }}%
+                                    </span>
+                                    <i class="fa-solid fa-chevron-right text-xs text-gray-500"></i>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DISTRICT INSPECTOR PANEL (ADA DERANA MODEL) -->
+                <div class="lg:col-span-7">
+                    <div v-if="selectedDistrict" class="glass-panel p-6 rounded-3xl space-y-6">
+                        
+                        <div class="flex justify-between items-start border-b border-slate-700/80 pb-4">
+                            <div>
+                                <span class="text-xs font-black uppercase text-amber-400 tracking-widest bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                                    Ispezione Territoriale Dettagliata
+                                </span>
+                                <h2 class="text-3xl font-black text-white uppercase tracking-tight mt-2">{{ selectedDistrict.name }}</h2>
+                                <div class="text-xs text-gray-400 font-semibold mt-0.5">{{ selectedDistrict.zoneName }}</div>
+                            </div>
+
+                            <div v-if="isSwingDistrict(selectedDistrict)" class="bg-amber-500/20 border border-amber-400 text-amber-300 text-xs font-bold px-4 py-2 rounded-2xl flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                                <i class="fa-solid fa-arrows-rotate text-amber-400 animate-spin"></i> Ribaltone del Partito Vincitore
+                            </div>
+                            <div v-else class="bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs font-bold px-4 py-2 rounded-2xl flex items-center gap-2">
+                                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Partito Vincitore Confermato
+                            </div>
+                        </div>
+
+                        <!-- TURNOUT & WINNERS HEAD-TO-HEAD STATS -->
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold">Affluenza Elezione A</div>
+                                <div class="text-xl font-mono font-black text-cyan-400 mt-1">{{ getDistrictTurnout(selectedDistrict, elA) }}%</div>
+                            </div>
+                            <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold">Affluenza Elezione B</div>
+                                <div class="text-xl font-mono font-black text-amber-400 mt-1">{{ getDistrictTurnout(selectedDistrict, elB) }}%</div>
+                            </div>
+                            <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex flex-col items-center justify-center">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">Vincitore A</div>
+                                <div class="flex items-center gap-2">
+                                    <img :src="getDistrictWinner(selectedDistrict, elA)?.photo" class="w-6 h-6 rounded-full object-cover bg-slate-900 border" :style="{ borderColor: getDistrictWinner(selectedDistrict, elA)?.color }">
+                                    <span class="text-xs font-bold truncate text-gray-200">{{ getDistrictWinner(selectedDistrict, elA)?.name || 'N/D' }}</span>
+                                </div>
+                            </div>
+                            <div class="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 flex flex-col items-center justify-center">
+                                <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">Vincitore B</div>
+                                <div class="flex items-center gap-2">
+                                    <img :src="getDistrictWinner(selectedDistrict, elB)?.photo" class="w-6 h-6 rounded-full object-cover bg-slate-900 border" :style="{ borderColor: getDistrictWinner(selectedDistrict, elB)?.color }">
+                                    <span class="text-xs font-bold truncate text-yellow-400">{{ getDistrictWinner(selectedDistrict, elB)?.name || 'N/D' }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CANDIDATES VOTES COMPARISON LIST WITH DYNAMIC BARS -->
+                        <div class="space-y-4">
+                            <h4 class="text-xs font-black uppercase text-gray-300 tracking-wider flex items-center justify-between">
+                                <span>Flusso Voti Disaggregati Candidati</span>
+                                <span class="text-[10px] text-gray-400 font-mono">Modello Grafico Ada Derana</span>
+                            </h4>
+
+                            <div v-for="cand in getDistrictCandidateComparison(selectedDistrict)" :key="'d-c-'+cand.name" class="bg-slate-900/90 p-4 rounded-2xl border border-slate-800/80 space-y-3">
+                                <div class="flex justify-between items-center text-xs">
+                                    <div class="flex items-center gap-3">
+                                        <img :src="cand.photo" @error="cand.photo='https://placehold.co/100x100/1e293b/white?text=Cand'" class="w-8 h-8 rounded-full object-cover border-2 shadow" :style="{ borderColor: cand.color }">
+                                        <div>
+                                            <span class="font-bold text-white text-sm">{{ cand.name }}</span>
+                                            <span class="text-[10px] text-gray-400 ml-2 font-semibold">({{ cand.party }})</span>
+                                        </div>
+                                    </div>
+                                    <div class="text-right font-mono">
+                                        <span class="font-bold text-sm px-2.5 py-1 rounded-full border" :class="cand.diffVotes >= 0 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'">
+                                            {{ cand.diffVotes >= 0 ? '+' : '' }}{{ cand.diffVotes.toLocaleString() }} voti
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- COMPARISON BARS (A vs B) -->
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mb-1.5">
+                                            <span class="font-bold text-cyan-400">Elezione A</span>
+                                            <span class="font-mono text-gray-200">{{ cand.votesA.toLocaleString() }} ({{ cand.percA }}%)</span>
+                                        </div>
+                                        <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-cyan-500 rounded-full progress-bar-fill" :style="{ width: cand.percA + '%' }"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                                        <div class="flex justify-between text-[10px] text-gray-400 mb-1.5">
+                                            <span class="font-bold text-amber-400">Elezione B</span>
+                                            <span class="font-mono text-gray-200">{{ cand.votesB.toLocaleString() }} ({{ cand.percB }}%)</span>
+                                        </div>
+                                        <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden">
+                                            <div class="h-full bg-amber-500 rounded-full progress-bar-fill" :style="{ width: cand.percB + '%' }"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ELECTION SELECTION MODAL -->
+        <div v-if="showUploadModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-xl z-[99999] flex items-center justify-center p-4">
+            <div class="bg-slate-900 border border-slate-700/80 w-full max-w-2xl rounded-3xl p-6 shadow-2xl relative space-y-6">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <h3 class="text-xl font-black uppercase text-white flex items-center gap-2">
+                        <i class="fa-solid fa-folder-open text-amber-400"></i> Seleziona Consultazioni
+                    </h3>
+                    <button @click="showUploadModal = false" class="text-gray-400 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-2">1. Elezione A (Precedente)</label>
+                        <select v-model="selectedAIndex" class="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3.5 text-sm text-white focus:border-amber-400 outline-none font-medium">
+                            <option v-for="(arch, idx) in localArchives" :key="'sel-a-'+idx" :value="idx">
+                                {{ arch.electionName }} ({{ arch.date }}) - Vincitore: {{ arch.winnerName }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-2">2. Elezione B (Successiva)</label>
+                        <select v-model="selectedBIndex" class="w-full bg-slate-950 border border-slate-700 rounded-2xl p-3.5 text-sm text-white focus:border-amber-400 outline-none font-medium">
+                            <option v-for="(arch, idx) in localArchives" :key="'sel-b-'+idx" :value="idx">
+                                {{ arch.electionName }} ({{ arch.date }}) - Vincitore: {{ arch.winnerName }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-slate-800 pt-4">
+                        <label class="block text-xs font-bold uppercase text-gray-400 mb-2">Oppure Carica File JSON Esterno</label>
+                        <input type="file" accept=".json" @change="handleFileUpload" class="w-full bg-slate-950 border border-slate-800 rounded-2xl p-2.5 text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-amber-500 file:text-slate-950 file:font-black hover:file:bg-amber-400 cursor-pointer">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                    <button @click="confirmSelection" class="bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black px-6 py-3.5 rounded-2xl transition shadow-lg cursor-pointer uppercase text-xs tracking-wider">
+                        Conferma ed Elabora Grafici
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Application Scripting -->
+    <script>
+        const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
+
+        createApp({
+            setup() {
+                const showUploadModal = ref(false);
+                const localArchives = ref(JSON.parse(localStorage.getItem('tv_elections_archive') || '[]'));
+                
+                const selectedAIndex = ref(0);
+                const selectedBIndex = ref(1);
+
+                const elA = ref(null);
+                const elB = ref(null);
+                const selectedDistrict = ref(null);
+                const hoveredDistrict = ref(null);
+                const tooltipPos = ref({ x: 0, y: 0 });
+
+                let chartInstance = null;
+
+                onMounted(() => {
+                    if (localArchives.value.length >= 2) {
+                        elA.value = localArchives.value[0];
+                        elB.value = localArchives.value[1];
+                        if (elA.value.regions && elA.value.regions.length > 0) {
+                            selectedDistrict.value = elA.value.regions[0];
+                        }
+                    } else {
+                        showUploadModal.value = true;
+                    }
+
+                    nextTick(() => {
+                        renderChart();
+                    });
+                });
+
+                const confirmSelection = () => {
+                    if (localArchives.value[selectedAIndex.value]) {
+                        elA.value = localArchives.value[selectedAIndex.value];
+                    }
+                    if (localArchives.value[selectedBIndex.value]) {
+                        elB.value = localArchives.value[selectedBIndex.value];
+                    }
+                    if (elA.value && elA.value.regions) {
+                        selectedDistrict.value = elA.value.regions[0];
+                    }
+                    showUploadModal.value = false;
+
+                    nextTick(() => {
+                        renderChart();
+                    });
+                };
+
+                const handleFileUpload = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            localArchives.value.unshift(parsed);
+                            selectedAIndex.value = 0;
+                            confirmSelection();
+                        } catch(err) {
+                            alert("Impossibile caricare il file JSON.");
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                const getValide = (el) => {
+                    if (!el || !el.regions) return 0;
+                    let v = 0;
+                    el.regions.forEach(r => {
+                        if (r.votes) Object.values(r.votes).forEach(val => v += (val || 0));
+                    });
+                    return v;
+                };
+
+                const mergedCandidates = computed(() => {
+                    if (!elA.value || !elB.value) return [];
+
+                    const valA = getValide(elA.value);
+                    const valB = getValide(elB.value);
+
+                    const map = {};
+
+                    if (elA.value.candidates) {
+                        elA.value.candidates.forEach(c => {
+                            let votes = 0;
+                            elA.value.regions.forEach(r => { if(r.votes && r.votes[c.id]) votes += r.votes[c.id]; });
+                            map[c.name] = {
+                                name: c.name,
+                                party: c.party,
+                                color: c.color,
+                                photo: c.photo || 'https://placehold.co/100x100/1e293b/white?text=Cand',
+                                inA: true,
+                                votesA: votes,
+                                percA: valA > 0 ? ((votes / valA) * 100).toFixed(1) : '0.0',
+                                inB: false,
+                                votesB: 0,
+                                percB: '0.0'
+                            };
+                        });
+                    }
+
+                    if (elB.value.candidates) {
+                        elB.value.candidates.forEach(c => {
+                            let votes = 0;
+                            elB.value.regions.forEach(r => { if(r.votes && r.votes[c.id]) votes += r.votes[c.id]; });
+
+                            if (map[c.name]) {
+                                map[c.name].inB = true;
+                                map[c.name].votesB = votes;
+                                map[c.name].percB = valB > 0 ? ((votes / valB) * 100).toFixed(1) : '0.0';
+                                if (c.photo) map[c.name].photo = c.photo;
+                            } else {
+                                map[c.name] = {
+                                    name: c.name,
+                                    party: c.party,
+                                    color: c.color,
+                                    photo: c.photo || 'https://placehold.co/100x100/1e293b/white?text=Cand',
+                                    inA: false,
+                                    votesA: 0,
+                                    percA: '0.0',
+                                    inB: true,
+                                    votesB: votes,
+                                    percB: valB > 0 ? ((votes / valB) * 100).toFixed(1) : '0.0'
+                                };
+                            }
+                        });
+                    }
+
+                    return Object.values(map).map(c => {
+                        const diffVotes = c.votesB - c.votesA;
+                        const diffPerc = (parseFloat(c.percB) - parseFloat(c.percA)).toFixed(1);
+                        return { ...c, diffVotes, diffPerc };
+                    }).sort((a, b) => b.votesB - a.votesB);
+                });
+
+                const renderChart = () => {
+                    const canvas = document.getElementById('candidatesComparisonChart');
+                    if (!canvas) return;
+
+                    const candidates = mergedCandidates.value;
+                    const labels = candidates.map(c => c.name);
+                    const dataA = candidates.map(c => parseFloat(c.percA));
+                    const dataB = candidates.map(c => parseFloat(c.percB));
+
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    chartInstance = new Chart(canvas, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: 'Elezione A (%)',
+                                    data: dataA,
+                                    backgroundColor: '#06b6d4',
+                                    borderRadius: 8
+                                },
+                                {
+                                    label: 'Elezione B (%)',
+                                    data: dataB,
+                                    backgroundColor: '#f59e0b',
+                                    borderRadius: 8
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    labels: { color: '#94a3b8', font: { family: 'Plus Jakarta Sans', weight: 'bold' } }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    ticks: { color: '#64748b' },
+                                    grid: { color: 'rgba(255,255,255,0.05)' }
+                                },
+                                x: {
+                                    ticks: { color: '#94a3b8', font: { size: 10 } },
+                                    grid: { display: false }
+                                }
+                            }
+                        }
+                    });
+                };
+
+                const matchedRegions = computed(() => {
+                    if (!elA.value || !elA.value.regions) return [];
+                    return elA.value.regions;
+                });
+
+                const getDistrictWinner = (reg, el) => {
+                    if (!el || !el.regions) return null;
+                    const r = el.regions.find(item => item.name === reg.name);
+                    if (!r || !r.votes) return null;
+
+                    let maxV = -1;
+                    let winnerId = null;
+                    for (let cid in r.votes) {
+                        if (r.votes[cid] > maxV) {
+                            maxV = r.votes[cid];
+                            winnerId = cid;
+                        }
+                    }
+                    if (!winnerId) return null;
+                    return el.candidates.find(c => c.id == winnerId);
+                };
+
+                const getDistrictWinnerPerc = (reg, el) => {
+                    if (!el || !el.regions) return '0.0';
+                    const r = el.regions.find(item => item.name === reg.name);
+                    if (!r || !r.votes) return '0.0';
+
+                    let total = 0;
+                    let maxV = 0;
+                    Object.values(r.votes).forEach(v => {
+                        total += v;
+                        if (v > maxV) maxV = v;
+                    });
+                    return total > 0 ? ((maxV / total) * 100).toFixed(1) : '0.0';
+                };
+
+                const getDistrictWinnerColor = (reg) => {
+                    const w = getDistrictWinner(reg, elB.value);
+                    return w ? w.color : '#1e293b';
+                };
+
+                const isSwingDistrict = (reg) => {
+                    const wA = getDistrictWinner(reg, elA.value);
+                    const wB = getDistrictWinner(reg, elB.value);
+                    if (!wA || !wB) return false;
+                    return wA.name !== wB.name;
+                };
+
+                const getDistrictTurnout = (reg, el) => {
+                    if (!el || !el.regions) return '0.0';
+                    const r = el.regions.find(item => item.name === reg.name);
+                    if (!r || !r.elettori) return '0.0';
+                    return ((r.votanti / r.elettori) * 100).toFixed(1);
+                };
+
+                const onDistrictHover = (event, reg) => {
+                    hoveredDistrict.value = reg;
+                    tooltipPos.value = { x: event.clientX, y: event.clientY };
+                };
+
+                const onDistrictLeave = () => {
+                    hoveredDistrict.value = null;
+                };
+
+                const getDistrictCandidateComparison = (reg) => {
+                    if (!elA.value || !elB.value) return [];
+                    const regA = elA.value.regions.find(r => r.name === reg.name);
+                    const regB = elB.value.regions.find(r => r.name === reg.name);
+
+                    let valA = 0, valB = 0;
+                    if (regA && regA.votes) Object.values(regA.votes).forEach(v => valA += v);
+                    if (regB && regB.votes) Object.values(regB.votes).forEach(v => valB += v);
+
+                    return mergedCandidates.value.map(cand => {
+                        let candA = elA.value.candidates.find(c => c.name === cand.name);
+                        let candB = elB.value.candidates.find(c => c.name === cand.name);
+
+                        let vA = (regA && candA && regA.votes[candA.id]) ? regA.votes[candA.id] : 0;
+                        let vB = (regB && candB && regB.votes[candB.id]) ? regB.votes[candB.id] : 0;
+
+                        return {
+                            name: cand.name,
+                            party: cand.party,
+                            color: cand.color,
+                            photo: cand.photo,
+                            votesA: vA,
+                            percA: valA > 0 ? ((vA / valA) * 100).toFixed(1) : '0.0',
+                            votesB: vB,
+                            percB: valB > 0 ? ((vB / valB) * 100).toFixed(1) : '0.0',
+                            diffVotes: vB - vA
+                        };
+                    });
+                };
+
+                watch(mergedCandidates, () => {
+                    nextTick(() => renderChart());
+                });
+
+                return {
+                    showUploadModal, localArchives, selectedAIndex, selectedBIndex, elA, elB,
+                    selectedDistrict, hoveredDistrict, tooltipPos, confirmSelection, handleFileUpload, getValide, mergedCandidates,
+                    matchedRegions, getDistrictWinner, getDistrictWinnerPerc, getDistrictWinnerColor, isSwingDistrict,
+                    getDistrictTurnout, onDistrictHover, onDistrictLeave, getDistrictCandidateComparison
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
